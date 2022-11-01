@@ -1,2 +1,2 @@
 main:
-	cargo xbuild
+	cargo bootimage
