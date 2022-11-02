@@ -9,6 +9,8 @@ edition = "2021"
 bootloader = "0.9.18"
 volatile = "0.2.3"
 spin = "0.9.4"
+xbuild = "0.1.1"
+bootimage = "0.10.3"
 
 
 [dependencies.lazy_static]
