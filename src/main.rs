@@ -13,6 +13,10 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    println!("Hello World{}", "!");
+    println!("root@COMPUTER $ {}", "ls");
+    println!("Cargo.lock  Cargo.toml  LICENSE  Makefile  README.md  src  target  x86_64-tomatoos.json");
+    println!("root@COMPUTER $ {}", "echo Hello TomatoOS");
+    println!("Hello TomatoOS");
+    println!("root@COMPUTER $ {}", "");
     loop {}
 }
