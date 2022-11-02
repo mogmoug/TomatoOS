@@ -3,7 +3,7 @@ use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
-
+use core::intrinsics::*;
 lazy_static! {
     /// A global `Writer` instance that can be used for printing to the VGA text buffer.
     ///
@@ -41,11 +41,11 @@ pub enum Color {
 /// A combination of a foreground and a background color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-struct ColorCode(u8);
+pub struct ColorCode(u8);
 
 impl ColorCode {
     /// Create a new `ColorCode` with the given foreground and background colors.
-    fn new(foreground: Color, background: Color) -> ColorCode {
+    pub fn new(foreground: Color, background: Color) -> ColorCode {
         ColorCode((background as u8) << 4 | (foreground as u8))
     }
 }
@@ -79,6 +79,7 @@ pub struct Writer {
     buffer: &'static mut Buffer,
 }
 
+#[warn(dead_code)]
 impl Writer {
     /// Writes an ASCII byte to the buffer.
     ///
@@ -116,6 +117,59 @@ impl Writer {
                 0x20..=0x7e | b'\n' => self.write_byte(byte),
                 // not part of printable ASCII range
                 _ => self.write_byte(0xfe),
+            }
+        }
+    }
+
+    pub fn draw_point(&mut self, row: usize, col: usize, color: ColorCode) {
+        let ascii_character = self.buffer.chars[row][col].read().ascii_character;
+        self.buffer.chars[row][col].write(ScreenChar {
+            ascii_character,
+            color_code: color,
+        });
+    }
+
+    pub fn draw_point_color(&mut self, row: usize, col: usize, fore: Color, back: Color) {
+        self.draw_point(row, col, new_color(fore, back));
+    }
+
+    pub fn draw_line_vertical(&mut self, row: usize, col: usize, length: usize, color: ColorCode) {
+        use crate::println;
+        if row + length >= BUFFER_HEIGHT {
+            println!("call draw_line_vertical:bad argument, row+length >= BUFFER_HEIGHT");
+            return;
+        }
+        if col >= BUFFER_WIDTH {
+            println!("call draw_line_vertical:bad argument, col >= BUFFER_WIDTH");
+            return;
+        }
+        for i in 0..=length - 1 {
+            self.draw_point(row + i, col, color);
+        }
+    }
+
+    pub fn draw_fill(&mut self, color: ColorCode) {
+        for i in 0..=BUFFER_HEIGHT - 1 {
+            for j in 0..=BUFFER_WIDTH - 1 {
+                let ascii_character = self.buffer.chars[i][j].read().ascii_character;
+                self.buffer.chars[i][j].write(ScreenChar {
+                    ascii_character,
+                    color_code: color,
+                });
+            }
+        }
+    }
+
+    pub fn draw_circle(&mut self, x: usize, y: usize, radius: f64, color: ColorCode) {
+        for i in 0..=100 {
+            unsafe {
+                let x1 = sinf64(i as f64)*radius+x as f64;
+                let y1 = cosf64(i as f64)*radius/2.4+y as f64;
+                let ascii_character = self.buffer.chars[y1 as usize][x1 as usize].read().ascii_character;
+                self.buffer.chars[y1 as usize][x1 as usize].write(ScreenChar {
+                    ascii_character,
+                    color_code: color,
+                });
             }
         }
     }
@@ -162,6 +216,10 @@ macro_rules! print {
 macro_rules! println {
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+pub fn new_color(fore:Color,back:Color) -> ColorCode{
+    ColorCode::new(fore, back)
 }
 
 /// Prints the given formatted string to the VGA text buffer through the global `WRITER` instance.
