@@ -3,7 +3,6 @@ use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
-use core::intrinsics::*;
 lazy_static! {
     /// A global `Writer` instance that can be used for printing to the VGA text buffer.
     ///
@@ -79,7 +78,6 @@ pub struct Writer {
     buffer: &'static mut Buffer,
 }
 
-#[warn(dead_code)]
 impl Writer {
     /// Writes an ASCII byte to the buffer.
     ///
@@ -129,6 +127,13 @@ impl Writer {
         });
     }
 
+    pub fn draw_point_char(&mut self, row: usize, col: usize, color: ColorCode, char:u8) {
+        self.buffer.chars[row][col].write(ScreenChar {
+            ascii_character: char,
+            color_code: color,
+        });
+    }
+
     pub fn draw_point_color(&mut self, row: usize, col: usize, fore: Color, back: Color) {
         self.draw_point(row, col, new_color(fore, back));
     }
@@ -153,20 +158,6 @@ impl Writer {
             for j in 0..=BUFFER_WIDTH - 1 {
                 let ascii_character = self.buffer.chars[i][j].read().ascii_character;
                 self.buffer.chars[i][j].write(ScreenChar {
-                    ascii_character,
-                    color_code: color,
-                });
-            }
-        }
-    }
-
-    pub fn draw_circle(&mut self, x: usize, y: usize, radius: f64, color: ColorCode) {
-        for i in 0..=100 {
-            unsafe {
-                let x1 = sinf64(i as f64)*radius+x as f64;
-                let y1 = cosf64(i as f64)*radius/2.4+y as f64;
-                let ascii_character = self.buffer.chars[y1 as usize][x1 as usize].read().ascii_character;
-                self.buffer.chars[y1 as usize][x1 as usize].write(ScreenChar {
                     ascii_character,
                     color_code: color,
                 });
